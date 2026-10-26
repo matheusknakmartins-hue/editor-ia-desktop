@@ -41,15 +41,22 @@ def endpoint(transcript, duration):
     words = transcript.get('words') or []
     if not words:
         raise RuntimeError('AssemblyAI não reconheceu palavras; corte automático interrompido.')
-    previous = -1
-    for word in words:
+    for index, word in enumerate(words, 1):
         start, end = word.get('start'), word.get('end')
-        if (not isinstance(start, (int, float)) or not isinstance(end, (int, float))
+        if (isinstance(start, bool) or isinstance(end, bool)
+                or not isinstance(start, (int, float)) or not isinstance(end, (int, float))
                 or not math.isfinite(start) or not math.isfinite(end)
-                or not 0 <= start < end <= duration * 1000 + 80 or start < previous):
-            raise RuntimeError('AssemblyAI retornou tempos de palavras inválidos.')
-        previous = start
+                or not 0 <= start <= end):
+            raise RuntimeError(f'AssemblyAI retornou tempos de palavras inválidos na palavra {index}: '
+                               f'início={start!r}, fim={end!r} ms.')
+        if end > duration * 1000 + 80:
+            raise RuntimeError(f'AssemblyAI retornou tempo além da cena na palavra {index}: '
+                               f'fim={end:.0f} ms, duração={duration * 1000:.0f} ms.')
+    # Alignment can produce zero-duration words or overlapping/out-of-order
+    # entries. Only the latest endpoint is needed; do not depend on list order.
     last = max(words, key=lambda word: word['end'])
+    if last['end'] <= 0:
+        raise RuntimeError('AssemblyAI não localizou um fim de fala maior que zero.')
     if last.get('confidence', 0) < 0.5:
         raise RuntimeError('Última palavra com baixa confiança. Revise antes de cortar.')
     return min(duration, last['end'] / 1000), {
@@ -65,7 +72,10 @@ def transcribe_end(clip, duration, key, cache_dir, ffmpeg, run):
     import tempfile
     with tempfile.TemporaryDirectory(prefix='editor-audio-') as folder:
         audio = Path(folder) / 'audio.wav'
-        run([ffmpeg, '-v', 'error', '-nostdin', '-i', str(clip), '-vn', '-ac', '1',
+        # Match the timeline that edit_video can render (the shorter stream).
+        # Audio tracks can extend beyond the video stream in valid input files.
+        run([ffmpeg, '-v', 'error', '-nostdin', '-i', str(clip), '-vn',
+             '-af', 'asetpts=PTS-STARTPTS', '-t', str(duration), '-ac', '1',
              '-ar', '16000', '-c:a', 'pcm_s16le', str(audio)])
         data = audio.read_bytes()
     extracted = time.monotonic()
