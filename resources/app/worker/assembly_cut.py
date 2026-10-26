@@ -11,6 +11,8 @@ import urllib.request
 
 BASE = 'https://api.assemblyai.com/v2'
 MODELS = ['universal-3-pro', 'universal-2']
+# Small alignment overshoots are clamped to the real media endpoint below.
+ENDPOINT_TOLERANCE_MS = 250
 _locks_guard = threading.Lock()
 _locks = {}
 
@@ -49,7 +51,7 @@ def endpoint(transcript, duration):
                 or not 0 <= start <= end):
             raise RuntimeError(f'AssemblyAI retornou tempos de palavras inválidos na palavra {index}: '
                                f'início={start!r}, fim={end!r} ms.')
-        if end > duration * 1000 + 80:
+        if end > duration * 1000 + ENDPOINT_TOLERANCE_MS:
             raise RuntimeError(f'AssemblyAI retornou tempo além da cena na palavra {index}: '
                                f'fim={end:.0f} ms, duração={duration * 1000:.0f} ms.')
     # Alignment can produce zero-duration words or overlapping/out-of-order

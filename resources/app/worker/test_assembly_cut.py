@@ -23,9 +23,20 @@ class EndpointTests(unittest.TestCase):
         end, _ = assembly_cut.endpoint({'words': [word(500, 2030)]}, 2)
         self.assertEqual(end, 2)
 
+    def test_reported_flow_endpoint_is_clamped_without_losing_raw_timestamp(self):
+        end, info = assembly_cut.endpoint({'words': [word(7700, 8145)]}, 8)
+        self.assertEqual(end, 8)
+        self.assertEqual(info['lastWordEndMilliseconds'], 8145)
+
+    def test_overrun_tolerance_boundary(self):
+        end, _ = assembly_cut.endpoint({'words': [word(7700, 8250)]}, 8)
+        self.assertEqual(end, 8)
+        with self.assertRaisesRegex(RuntimeError, 'além da cena'):
+            assembly_cut.endpoint({'words': [word(7700, 8251)]}, 8)
+
     def test_invalid_times_still_fail(self):
         for start, end in [(-1, 100), (200, 100), (0, float('nan')),
-                           (False, 100), (0, 2200), (0, 0)]:
+                           (False, 100), (0, 2300), (0, 0)]:
             with self.subTest(start=start, end=end), self.assertRaises(RuntimeError):
                 assembly_cut.endpoint({'words': [word(start, end)]}, 2)
 
