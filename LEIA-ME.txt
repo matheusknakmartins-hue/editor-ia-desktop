@@ -1,0 +1,39 @@
+EDITOR DO NEIS — Windows x64 — versão portátil 1.0
+
+1. Extraia TODO o ZIP para uma pasta local.
+2. Abra EDITOR DO NEIS.exe dentro da pasta extraída.
+3. Não mova somente o EXE: ele precisa das pastas e DLLs ao lado.
+4. Adicione pastas contendo exatamente três vídeos cada.
+   Ordem natural do nome: cena1, cena2, cena3 (ou 1, 2, 3).
+5. Ajuste as velocidades, gere a prévia e exporte.
+
+Configurações:
+- AssemblyAI: informe sua própria chave e clique Salvar chave.
+  A chave é protegida pelo Windows para o usuário atual.
+  A transcrição envia áudio ao AssemblyAI e pode gerar cobrança.
+- Desmarque AssemblyAI para detecção local, sem chave ou internet.
+- Prévia/exportação incluem cortes, aceleração, redução de ruído e seta.
+- Exportar todos copia os vídeos prontos sem renderizá-los de novo.
+- Remover da fila não exclui os arquivos originais.
+
+Requisitos: Windows 10/11 x64. Não é uma versão nativa ARM64.
+Python e FFmpeg estão incluídos. Para erro de DLL do mecanismo local,
+instale o Microsoft Visual C++ Redistributable x64 incluído em
+Suporte/VC_redist.x64.exe (instalador oficial Microsoft).
+
+Os dados ficam em %APPDATA%/editor-do-neis. A fila começa vazia a cada
+abertura; chave salva e prévias no disco são preservadas.
+Não há atualização automática. Não inclui sua chave nem seus vídeos.
+
+LIMITAÇÃO DE VALIDAÇÃO:
+O pacote foi montado no macOS com binários Windows x64 oficiais.
+Foram verificados estrutura, executáveis e testes automatizados de lógica.
+Não foi executado em Windows real nem VM. Portanto, esta é uma primeira
+versão Windows para validação, não uma versão homologada nesse sistema.
+O aplicativo não possui certificado comercial de assinatura próprio.
+Caso o Windows bloqueie, não desative o antivírus; registre o aviso.
+
+Componentes: Electron (licenças incluídas), Python (licença incluída),
+NumPy/ONNX Runtime e dependências (licenças nos diretórios .dist-info),
+FFmpeg da distribuição Gyan (licença e informações em resources/app/bin).
+Fontes do editor incluídos em resources/app.

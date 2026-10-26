@@ -1,0 +1,12 @@
+# Aplicativo compilado
+EDITOR DO NEIS.exe
+
+# FFmpeg distribuído junto com o app
+resources/app/bin/ffmpeg.exe
+resources/app/bin/ffprobe.exe
+
+# Temporários
+*.log
+*.tmp
+__pycache__/
+*.pyc

@@ -1,0 +1,11 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; media-src preview:; connect-src 'none'">
+<title>EDITOR DO NEIS</title><link rel="stylesheet" href="style.css"></head>
+<body><header><div><small>NEIS / CREATOR TOOLS</small><h1>EDITOR DO NEIS<span>●</span></h1><p>Do bruto ao pronto. Três cenas, um vídeo.</p></div><button id="settings">Configurações</button></header>
+<main><section><div class="bar"><h2>Seus produtos</h2><button id="add" class="primary">+ Adicionar pastas</button></div><p class="muted">Três vídeos por pasta, em ordem natural de nome.</p><div id="groups"></div>
+<div class="bar bottom"><button id="generateAll" class="primary">Gerar todos</button><button id="exportAll">Exportar todos</button></div></section>
+<section><div class="bar"><h2 id="title">Prévia</h2><span id="count"></span></div><video id="video" controls></video><p id="empty">Escolha um produto para editar.</p>
+<div id="details" hidden><p id="clips" class="muted"></p><div class="speeds"><label>Cena 1<input id="s0" type="number" min=".5" max="2" step=".05" value="1.3"></label><label>Cena 2<input id="s1" type="number" min=".5" max="2" step=".05" value="1.15"></label><label>Cena 3<input id="s2" type="number" min=".5" max="2" step=".05" value="1.15"></label></div><div class="bar"><button id="generate" class="primary">Gerar prévia</button><button id="export">Exportar vídeo</button><button id="remove">Remover da fila</button></div></div></section></main>
+<footer id="status" role="status"></footer>
+<dialog id="config"><h2>Configurações</h2><label class="check"><input id="assembly" type="checkbox" checked> Cortar pelo AssemblyAI (serviço pago)</label><p class="muted">Desmarque para detecção de fala local, sem API.</p><label>Chave AssemblyAI<input id="key" type="password" placeholder="Sua chave fica oculta" autocomplete="off"></label><p id="keyState"></p><div class="bar"><button id="saveKey" class="primary">Salvar chave</button><button id="forgetKey">Remover chave</button><button id="closeConfig">Fechar</button></div></dialog>
+<script src="renderer.js"></script></body></html>
