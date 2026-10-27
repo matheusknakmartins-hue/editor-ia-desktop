@@ -5,7 +5,7 @@ const os=require('node:os');
 const path=require('node:path');
 const vm=require('node:vm');
 
-test('batch import requires review, allows swaps, and exports every image once',async t=>{
+test('one batch import allows optional review and exports every image once in two scene folders',async t=>{
   const folder=await fs.mkdtemp(path.join(os.tmpdir(),'main-images-'));
   t.after(()=>fs.rm(folder,{recursive:true,force:true}));
   const files=[];
@@ -47,7 +47,8 @@ test('batch import requires review, allows swaps, and exports every image once',
   dialogs.push({canceled:false,filePaths:files});
   let state=await call('matchImages');
   assert.equal(state.imageProducts.length,10);assert.equal(state.imageReviewRequired,true);
-  assert.ok((await call('exportImages')).error.includes('Confirmar pares'));
+  dialogs.push({canceled:true,filePaths:[]});
+  assert.equal((await call('exportImages')).error,undefined);
   state=await call('swapImageSlots',{productId:state.imageProducts[0].id,scene:0,
     otherProductId:state.imageProducts[1].id,otherScene:1});
   assert.equal(state.imageProducts[0].images[0],'input-11.png');
@@ -55,13 +56,17 @@ test('batch import requires review, allows swaps, and exports every image once',
   fail=true;dialogs.push({canceled:false,filePaths:files});
   state=await call('matchImages');
   assert.ok(state.error);assert.equal(state.imageProducts.length,10);assert.equal(state.busy,false);
-  await call('confirmImagePairs');
   dialogs.push({canceled:false,filePaths:[folder]});
   state=await call('exportImages');
   assert.equal(state.error,undefined);
   const output=(await fs.readdir(folder)).find(name=>name.startsWith('Imagens-Flow-'));
-  const exported=await fs.readdir(path.join(folder,output));assert.equal(exported.length,20);
-  const contents=await Promise.all(exported.map(async name=>(await fs.readFile(path.join(folder,output,name)))[0]));
+  const sceneFolders=await fs.readdir(path.join(folder,output));assert.deepEqual(sceneFolders,['Cena-1','Cenas-2-3']);
+  const exported=[];
+  for(const scene of sceneFolders){
+    const names=await fs.readdir(path.join(folder,output,scene));assert.equal(names.length,10);
+    exported.push(...names.map(name=>path.join(folder,output,scene,name)));
+  }
+  const contents=await Promise.all(exported.map(async file=>(await fs.readFile(file))[0]));
   assert.deepEqual(contents.sort((a,b)=>a-b),Array.from({length:20},(_,i)=>i));
   fail=false;
   dialogs.push({canceled:false,filePaths:[files[0]]},{canceled:true,filePaths:[]});

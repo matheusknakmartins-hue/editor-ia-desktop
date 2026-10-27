@@ -5,7 +5,7 @@ const os=require('node:os');
 const path=require('node:path');
 const {imagePlan,exportImages}=require('./flow-images');
 
-test('exports all scene 1 images before all scene 2/3 images, preserving bytes and extensions',async t=>{
+test('exports scenes into separate folders, preserving names, bytes, extensions and product correspondence',async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'flow-images-test-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const sources=['one.PNG','two.jpg','three.webp','four.jpeg'].map(name=>path.join(root,name));
@@ -17,11 +17,13 @@ test('exports all scene 1 images before all scene 2/3 images, preserving bytes a
   const first=await exportImages(products,root);
   assert.equal(first.count,4);
   for(const item of imagePlan(products)){
-    assert.deepEqual(await fs.readFile(path.join(first.directory,item.name)),await fs.readFile(item.source));
+    assert.deepEqual(await fs.readFile(path.join(first.directory,item.folder,item.name)),await fs.readFile(item.source));
   }
   const second=await exportImages(products,root);
   assert.notEqual(second.directory,first.directory);
-  assert.deepEqual((await fs.readdir(first.directory)).sort(),names);
+  assert.deepEqual((await fs.readdir(first.directory)).sort(),['Cena-1','Cenas-2-3']);
+  assert.deepEqual(await fs.readdir(path.join(first.directory,'Cena-1')),names.slice(0,2));
+  assert.deepEqual(await fs.readdir(path.join(first.directory,'Cenas-2-3')),names.slice(2));
 });
 
 test('rejects incomplete products and unsupported images',()=>{

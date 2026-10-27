@@ -33,8 +33,8 @@ function snapshot(){
   return {groups:groups.map(g=>({...g,clips:g.clips.map(p=>path.basename(p)),url:g.output?`preview://video/${g.id}`:null})),
     imageProducts:imageProducts.map((p,index)=>({id:p.id,name:`Produto ${String(index+1).padStart(2,'0')}`,
       images:p.images.map(file=>path.basename(file)),thumbnails:p.images.map(file=>imageThumbnails.get(file)||''),
-      needsReview:!!p.needsReview,ambiguous:!!p.ambiguous,
-      filenames:plan.filter(item=>item.productIndex===index).map(item=>item.name)})),
+      needsReview:!!p.needsReview,ambiguous:!!p.ambiguous,sceneAmbiguous:!!p.sceneAmbiguous,
+      filenames:plan.filter(item=>item.productIndex===index).map(item=>`${item.folder}/${item.name}`)})),
     imageReviewRequired:imageProducts.some(p=>p.needsReview),busy,status,hasKey:!!key};
 }
 function update(){if(win&&!win.isDestroyed())win.webContents.send('state',snapshot());}
@@ -101,8 +101,8 @@ ipcMain.handle('editor',async(event,name,data)=>{
           cache:path.join(app.getPath('userData'),'models','dinov2-small'),temporaryRoot:app.getPath('temp'),
           sceneSplit,onProgress:message=>{status=message;update();}
         });
-        for(const pair of pairs)imageProducts.push({id:crypto.randomUUID(),images:pair.indices.map(index=>files[index]),needsReview:true,ambiguous:pair.ambiguous});
-        status='Pares sugeridos pela análise local. Confira os produtos e a ordem das cenas; depois clique em Confirmar pares e cenas.';
+        for(const pair of pairs)imageProducts.push({id:crypto.randomUUID(),images:pair.indices.map(index=>files[index]),needsReview:true,ambiguous:pair.ambiguous,sceneAmbiguous:pair.sceneAmbiguous});
+        status='Produtos e cenas sugeridos pela análise local. Confira as miniaturas e exporte para as pastas Cena-1 e Cenas-2-3.';
       }finally{busy=false;update();}
     }else if(name==='swapImageSlots'){
       requireIdle();
@@ -110,7 +110,7 @@ ipcMain.handle('editor',async(event,name,data)=>{
       if(!product||!other||![0,1].includes(data.scene)||![0,1].includes(data.otherScene))throw Error('Selecione duas imagens válidas para trocar.');
       [product.images[data.scene],other.images[data.otherScene]]=[other.images[data.otherScene],product.images[data.scene]];
       product.needsReview=other.needsReview=true;
-      status='Imagens trocadas. Confira os pares e confirme antes de exportar.';
+      status='Imagens trocadas. Confira os pares e exporte quando estiver pronto.';
     }else if(name==='confirmImagePairs'){
       requireIdle();for(const product of imageProducts)product.needsReview=false;
       status='Pares e cenas confirmados. Pronto para exportar as imagens em ordem.';
@@ -132,11 +132,10 @@ ipcMain.handle('editor',async(event,name,data)=>{
     }else if(name==='exportImages'){
       requireIdle();imagePlan(imageProducts);busy=true;update();
       try{
-        if(imageProducts.some(p=>p.needsReview))throw Error('Confira as duplas e clique em Confirmar pares e cenas antes de exportar.');
         const result=await dialog.showOpenDialog(win,{title:'Onde salvar as imagens para o Flow?',properties:['openDirectory','createDirectory']});
         if(result.canceled)return {...snapshot(),busy:false};
         const exported=await exportImages(imageProducts,result.filePaths[0]);
-        status=`${exported.count} imagens exportadas para ${exported.directory}. No Flow, siga a ordem numérica dos arquivos.`;
+        status=`${exported.count} imagens exportadas para ${exported.directory}, separadas nas pastas Cena-1 e Cenas-2-3. No Flow, siga a ordem numérica dos arquivos.`;
       }finally{busy=false;update();}
     }else if(name==='add'){
       requireIdle();

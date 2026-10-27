@@ -27,7 +27,10 @@ function render(next){
   for(const product of products){
     const row=document.createElement('div');row.className='image-product';
     const title=document.createElement('strong');title.textContent=product.name;row.append(title);
-    if(product.needsReview){const note=document.createElement('p');note.className='review-note';note.textContent=product.ambiguous?'Pares visualmente parecidos — confira com atenção.':'Confira o par e a posição das cenas.';row.append(note);}
+    if(product.needsReview){
+      const note=document.createElement('p');note.className='review-note';
+      note.textContent=product.sceneAmbiguous?'Cena incerta — confira qual imagem é a mulher apresentando.':product.ambiguous?'Pares visualmente parecidos — confira com atenção.':'Confira o par e a posição das cenas.';row.append(note);
+    }
     const slots=document.createElement('div');slots.className='image-slots';
     product.images.forEach((file,index)=>{
       const slot=document.createElement('div');slot.className='image-slot';
@@ -56,7 +59,7 @@ function render(next){
   }
   $('imageReview').hidden=!state.imageReviewRequired;
   $('confirmImagePairs').disabled=state.busy||!state.imageReviewRequired;
-  $('exportImages').disabled=state.busy||!products.length||state.imageReviewRequired;
+  $('exportImages').disabled=state.busy||!products.length;
 }
 $('add').onclick=()=>call('add');
 $('settings').onclick=()=>$('config').showModal();
@@ -71,7 +74,6 @@ $('export').onclick=()=>call('export',selected);
 $('exportAll').onclick=()=>call('export');
 $('addImages').onclick=()=>call('addImages');
 $('matchImages').onclick=()=>call('matchImages');
-$('matchSceneImages').onclick=()=>call('matchSceneImages');
 $('confirmImagePairs').onclick=()=>call('confirmImagePairs');
 $('exportImages').onclick=()=>call('exportImages');
 window.editor.updates(render);call('state');

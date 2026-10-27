@@ -35,34 +35,34 @@ def get_json(url):
         return json.loads(response.read(4 * 1024 * 1024))
 
 
-def ensure_model(cache):
+def ensure_model(cache, repository=MODEL_REPO, model_file=MODEL_FILE):
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)
     model = cache / 'model.onnx'
     manifest = cache / 'model.json'
     if model.exists() and manifest.exists():
         info = json.loads(manifest.read_text(encoding='utf-8'))
-        if info.get('repository') == MODEL_REPO and sha256(model) == info.get('sha256'):
+        if info.get('repository') == repository and sha256(model) == info.get('sha256'):
             return model, info['processor']
         raise RuntimeError('O modelo local não passou na verificação de integridade. '
-                           'Remova a pasta models/dinov2-small dos dados do editor e tente novamente.')
+                           'Remova a pasta desse modelo em models nos dados do editor e tente novamente.')
     progress('Primeiro uso: baixando modelo visual gratuito. Suas imagens não são enviadas.')
     try:
-        metadata = get_json(f'https://huggingface.co/api/models/{MODEL_REPO}?blobs=true')
+        metadata = get_json(f'https://huggingface.co/api/models/{repository}?blobs=true')
         revision = metadata['sha']
         if not re.fullmatch(r'[0-9a-f]{40}', revision):
             raise ValueError('Invalid model revision')
-        entry = next(item for item in metadata['siblings'] if item['rfilename'] == MODEL_FILE)
+        entry = next(item for item in metadata['siblings'] if item['rfilename'] == model_file)
         expected = entry['lfs']['sha256']
         size = entry['lfs']['size']
         if not re.fullmatch(r'[0-9a-f]{64}', expected) or not 0 < size < 200 * 1024 * 1024:
             raise ValueError('Invalid model metadata')
-        base = f'https://huggingface.co/{MODEL_REPO}/resolve/{revision}'
+        base = f'https://huggingface.co/{repository}/resolve/{revision}'
         processor = get_json(base + '/preprocessor_config.json')
         descriptor, temporary = tempfile.mkstemp(prefix='download-', dir=cache)
         try:
             with os.fdopen(descriptor, 'wb') as target:
-                with urllib.request.urlopen(base + '/' + MODEL_FILE, timeout=120) as source:
+                with urllib.request.urlopen(base + '/' + model_file, timeout=120) as source:
                     total = 0
                     last_report = -1
                     for block in iter(lambda: source.read(1024 * 1024), b''):
@@ -77,7 +77,7 @@ def ensure_model(cache):
             if total != size or sha256(temporary) != expected:
                 raise RuntimeError('O download do modelo falhou na verificação SHA-256. Tente novamente.')
             os.replace(temporary, model)
-            manifest.write_text(json.dumps({'repository': MODEL_REPO, 'revision': revision,
+            manifest.write_text(json.dumps({'repository': repository, 'revision': revision,
                                             'sha256': expected, 'processor': processor}), encoding='utf-8')
         finally:
             Path(temporary).unlink(missing_ok=True)
@@ -138,9 +138,10 @@ def optimal_pairs(similarities, scene_split=None):
 
 def decode_image(file, processor, ffmpeg, view='center'):
     import numpy as np
-    size = processor.get('size', {}).get('shortest_edge', 256)
+    size = processor.get('size', 256)
+    size = size.get('shortest_edge', 256) if isinstance(size, dict) else size
     crop = processor.get('crop_size', {'height': 224, 'width': 224})
-    height, width = int(crop['height']), int(crop['width'])
+    height, width = (int(crop['height']), int(crop['width'])) if isinstance(crop, dict) else (int(crop), int(crop))
     if not all(0 < dimension <= 1024 for dimension in (size, height, width)):
         raise RuntimeError('Dimensões do modelo visual não suportadas.')
     if view == 'center':
@@ -236,6 +237,26 @@ def similarity_matrix(features):
     return result.tolist()
 
 
+def pair_with_scene_scores(similarities, scene_scores):
+    """Use locally inferred scene roles to prevent pairing two scenes of the same type."""
+    count = len(similarities)
+    if count<2 or count>MAX_IMAGES or count%2 or len(scene_scores) != count or any(not math.isfinite(score) for score in scene_scores):
+        raise ValueError('Não foi possível identificar as cenas das imagens.')
+    # Every product contributes one image of each scene. Positive scores favor scene 2/3.
+    ranked = sorted(range(count), key=lambda index: (scene_scores[index], index))
+    split = count // 2
+    first = sorted(ranked[:split])
+    second = sorted(ranked[split:])
+    order = first + second
+    boundary_gap = scene_scores[ranked[split]] - scene_scores[ranked[split-1]]
+    pairs = optimal_pairs([[similarities[i][j] for j in order] for i in order], split)
+    for pair in pairs:
+        pair['indices'] = [order[index] for index in pair['indices']]
+        a, b = pair['indices']
+        pair['sceneAmbiguous'] = (boundary_gap < .015 or scene_scores[a] > -.015 or scene_scores[b] < .015)
+    return pairs
+
+
 def pair_images(files, cache, ffmpeg, scene_split=None):
     import numpy as np
     import onnxruntime as ort
@@ -244,6 +265,10 @@ def pair_images(files, cache, ffmpeg, scene_split=None):
     resolved = [Path(file).resolve(strict=True) for file in files]
     if len(set(resolved)) != len(files) or any(not file.is_file() for file in resolved):
         raise ValueError('Selecione imagens diferentes, sem duplicar arquivos.')
+    scene_scores = None
+    if scene_split is None:
+        from scene_images import classify_scenes
+        scene_scores = classify_scenes(resolved, Path(cache).parent / 'clip-scenes', ffmpeg)
     model, processor = ensure_model(cache)
     ort.disable_telemetry_events()
     options = ort.SessionOptions()
@@ -263,7 +288,8 @@ def pair_images(files, cache, ffmpeg, scene_split=None):
             views.append(detail_features(hidden, pixels, processor, view))
         features.append(combine_views(views))
     progress('Comparando detalhes e cores dos produtos…')
-    return optimal_pairs(similarity_matrix(features), scene_split)
+    similarities = similarity_matrix(features)
+    return pair_with_scene_scores(similarities, scene_scores) if scene_scores is not None else optimal_pairs(similarities, scene_split)
 
 
 if __name__ == '__main__':

@@ -8,25 +8,27 @@ EDITOR DO NEIS — Windows x64 — versão portátil 1.0
 5. Ajuste as velocidades, gere a prévia e exporte.
 
 Imagens para o Flow:
-- Prefira "Relacionar Cena 1 com Cenas 2/3": selecione primeiro as imagens
-  da Cena 1 (até 10), depois a mesma quantidade de imagens da mulher
-  apresentando o produto. Não precisa ordenar por produto: o editor procura
-  os pares entre os dois grupos e mantém cada imagem na sua etapa.
-- "Sugerir pares de lote misturado" aceita de 2 a 20 imagens em uma única
-  seleção, mas também precisa inferir as duplas sem saber a etapa de origem.
+- Clique em "Selecionar imagens e organizar" e selecione todas as imagens
+  de uma vez: uma quantidade par de 2 a 20 (até 10 produtos), sem precisar
+  ordenar ou separar por cena. Cada produto deve ter exatamente duas imagens.
+- O classificador local CLIP sugere quais imagens mostram a mulher sozinha
+  apresentando um produto (Cenas 2/3) e quais são a Cena 1. A partir disso,
+  o editor busca o mesmo produto entre as etapas, sem usar a ordem dos nomes.
 - O modelo visual DINOv2 Small compara a imagem inteira, o recorte central
   e a região inferior onde os produtos aparecem neste fluxo. Compara também
   detalhes locais e cores, além do resumo geral da imagem. Essa análise é
   mais lenta que a anterior e reaproveita o mesmo modelo já baixado.
   Confira as miniaturas: produtos parecidos podem ser confundidos.
-- Defina qual imagem é a Cena 1 e qual gera as Cenas 2/3. O modelo não
-  identifica automaticamente qual imagem veio do ChatGPT ou do Flow.
+- Confira principalmente os avisos de pares ou cenas incertas. As sugestões
+  podem confundir produtos semelhantes ou imagens fora do estilo esperado.
 - Use as listas para trocar imagens entre produtos e o botão de inverter
-  para trocar a posição das duas cenas. Clique em "Confirmar pares e cenas".
+  para trocar a posição das duas cenas. A revisão pode ser marcada como
+  concluída, mas isso não é um passo obrigatório para exportar.
 - A opção manual continua disponível: adicione um produto por vez,
   selecionando primeiro a Cena 1 e depois a imagem das Cenas 2/3.
 - A numeração dos produtos segue a ordem em que são adicionados.
-- Exporte para uma pasta: será criada uma subpasta Imagens-Flow-...
+- Clique em "Exportar nas duas pastas": será criada uma pasta Imagens-Flow-...
+  com as subpastas Cena-1 e Cenas-2-3, cada uma contendo as imagens da etapa.
 - Os nomes começam pela sequência: todas as Cenas 1 dos produtos,
   depois todas as Cenas 2/3, mantendo a mesma ordem dos produtos.
 - Exemplo com dois produtos: 001_Cena-1_Prod-01.png,
@@ -44,6 +46,10 @@ Modelo visual local:
   enviadas. O download é conferido por SHA-256 antes de usar o modelo.
 - O modelo fica em %APPDATA%/editor-do-neis/models/dinov2-small. Nos usos
   seguintes a análise funciona offline, usando o processador do computador.
+- A identificação das etapas baixa também os modelos gratuitos CLIP de
+  https://huggingface.co/Xenova/clip-vit-base-patch32 (CLIP, licença MIT).
+  Ficam em %APPDATA%/editor-do-neis/models/clip-scenes. Esse download adicional
+  acontece no primeiro uso da identificação automática de cenas.
 - Aproveita o Python, NumPy, ONNX Runtime e FFmpeg incluídos no pacote.
 
 Configurações:

@@ -11,6 +11,23 @@ import pair_images
 
 
 class PairImagesTests(unittest.TestCase):
+    def test_mixed_batch_gets_scene_one_first_without_using_filename_order(self):
+        scores = [[1, .1, .95, .1], [.1, 1, .1, .95], [.95, .1, 1, .1], [.1, .95, .1, 1]]
+        roles = [.15, -.15, -.20, .20]
+        pairs = pair_images.pair_with_scene_scores(scores, roles)
+        self.assertEqual([pair['indices'] for pair in pairs], [[1, 3], [2, 0]])
+        self.assertFalse(any(pair['sceneAmbiguous'] for pair in pairs))
+
+    def test_uncertain_scene_roles_are_flagged(self):
+        pairs = pair_images.pair_with_scene_scores([[1, .8], [.8, 1]], [-.001, .001])
+        self.assertTrue(pairs[0]['sceneAmbiguous'])
+
+    def test_old_and_new_model_processor_size_formats(self):
+        from types import SimpleNamespace
+        for processor in ({'size':224,'crop_size':224}, {'size':{'shortest_edge':224},'crop_size':{'height':224,'width':224}}):
+            with patch('subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=bytes(224*224*3))):
+                self.assertEqual(pair_images.decode_image('image.png',processor,'ffmpeg').shape,(1,3,224,224))
+
     def test_scene_groups_cannot_be_paired_within_the_same_scene(self):
         scores = [[1, .99, .80, .60], [.99, 1, .60, .80],
                   [.80, .60, 1, .99], [.60, .80, .99, 1]]

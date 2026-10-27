@@ -15,7 +15,7 @@ function imagePlan(products){
       if(!imageExtensions.includes(extension.slice(1)))throw Error('Use imagens PNG, JPG ou WebP.');
       const sequence=String(scene*products.length+index+1).padStart(width,'0');
       const number=String(index+1).padStart(2,'0');
-      return {source,productIndex:index,name:`${sequence}_${scene?'Cenas-2-3':'Cena-1'}_Prod-${number}${extension}`};
+      return {source,productIndex:index,folder:scene?'Cenas-2-3':'Cena-1',name:`${sequence}_${scene?'Cenas-2-3':'Cena-1'}_Prod-${number}${extension}`};
   }));
 }
 async function exportImages(products,destination){
@@ -26,7 +26,8 @@ async function exportImages(products,destination){
   // Each export gets its own directory, so existing exports are never overwritten.
   const directory=await fs.mkdtemp(path.join(destination,'Imagens-Flow-'));
   try{
-    for(const item of plan)await fs.copyFile(item.source,path.join(directory,item.name),constants.COPYFILE_EXCL);
+    for(const folder of ['Cena-1','Cenas-2-3'])await fs.mkdir(path.join(directory,folder));
+    for(const item of plan)await fs.copyFile(item.source,path.join(directory,item.folder,item.name),constants.COPYFILE_EXCL);
     return {directory,count:plan.length};
   }catch(error){
     await fs.rm(directory,{recursive:true,force:true});
