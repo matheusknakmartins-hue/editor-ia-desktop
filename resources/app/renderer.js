@@ -21,6 +21,22 @@ function render(next){
   $('export').disabled=state.busy||!g?.output;$('exportAll').disabled=state.busy||!state.groups.some(g=>g.output);
   $('keyState').textContent=state.hasKey?'Chave salva e protegida no Windows.':'Nenhuma chave salva.';
   $('status').textContent=state.status;
+  const products=state.imageProducts||[];
+  $('imageCount').textContent=`${products.length} produtos · ${products.length*2} imagens`;
+  $('imageProducts').replaceChildren();
+  for(const product of products){
+    const row=document.createElement('div');row.className='image-product';
+    const title=document.createElement('strong');title.textContent=product.name;row.append(title);
+    product.images.forEach((file,index)=>{
+      const description=document.createElement('p');
+      description.textContent=`${index?'Cenas 2/3':'Cena 1'}: ${file} → ${product.filenames[index]}`;
+      row.append(description);
+    });
+    const remove=document.createElement('button');remove.textContent='Remover produto';remove.disabled=state.busy;
+    remove.onclick=()=>{if(confirm(`Remover ${product.name} das imagens? Os originais serão preservados.`))call('removeImages',product.id);};
+    row.append(remove);$('imageProducts').append(row);
+  }
+  $('exportImages').disabled=state.busy||!products.length;
 }
 $('add').onclick=()=>call('add');
 $('settings').onclick=()=>$('config').showModal();
@@ -33,4 +49,6 @@ $('generate').onclick=()=>call('generate',{id:selected,assembly:$('assembly').ch
 $('generateAll').onclick=()=>call('generate',{assembly:$('assembly').checked});
 $('export').onclick=()=>call('export',selected);
 $('exportAll').onclick=()=>call('export');
+$('addImages').onclick=()=>call('addImages');
+$('exportImages').onclick=()=>call('exportImages');
 window.editor.updates(render);call('state');

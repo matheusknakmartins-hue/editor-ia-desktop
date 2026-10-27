@@ -7,6 +7,20 @@ EDITOR DO NEIS — Windows x64 — versão portátil 1.0
    Ordem natural do nome: cena1, cena2, cena3 (ou 1, 2, 3).
 5. Ajuste as velocidades, gere a prévia e exporte.
 
+Imagens para o Flow:
+- Na área "Imagens para o Flow", adicione um produto por vez.
+- Selecione primeiro a imagem da Cena 1 e depois a das Cenas 2/3.
+- A numeração dos produtos segue a ordem em que são adicionados.
+- Exporte para uma pasta: será criada uma subpasta Imagens-Flow-...
+- Os nomes começam pela sequência: todas as Cenas 1 dos produtos,
+  depois todas as Cenas 2/3, mantendo a mesma ordem dos produtos.
+- Exemplo com dois produtos: 001_Cena-1_Prod-01.png,
+  002_Cena-1_Prod-02.png, 003_Cenas-2-3_Prod-01.png,
+  004_Cenas-2-3_Prod-02.png. A extensão original é preservada.
+- São aceitos PNG, JPG/JPEG e WebP. Os originais não são alterados.
+- Selecione os arquivos no Flow pela ordem do nome. Não há envio automático.
+- A lista de imagens fica disponível até fechar o editor.
+
 Configurações:
 - AssemblyAI: informe sua própria chave e clique Salvar chave.
   A chave é protegida pelo Windows para o usuário atual.

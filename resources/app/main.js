@@ -4,11 +4,13 @@ const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {spawn}=require('node:child_process');
 const crypto=require('node:crypto');
+const {imageExtensions,imagePlan,exportImages}=require('./flow-images');
 protocol.registerSchemesAsPrivileged([{scheme:'preview',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true}}]);
 let win,groups=[],busy=false,key='',status='Adicione as pastas com três cenas.',session;
+let imageProducts=[];
 const extensions=new Set(['.mp4','.mov','.m4v','.webm']);
 const keyFile=()=>path.join(app.getPath('userData'),'assembly.key');
-const snapshot=()=>({groups:groups.map(g=>({...g,clips:g.clips.map(p=>path.basename(p)),url:g.output?`preview://video/${g.id}`:null})),busy,status,hasKey:!!key});
+const snapshot=()=>({groups:groups.map(g=>({...g,clips:g.clips.map(p=>path.basename(p)),url:g.output?`preview://video/${g.id}`:null})),imageProducts:imageProducts.map((p,index)=>({id:p.id,name:`Produto ${String(index+1).padStart(2,'0')}`,images:p.images.map(file=>path.basename(file)),filenames:imagePlan(imageProducts).filter(item=>item.productIndex===index).map(item=>item.name)})),busy,status,hasKey:!!key});
 function update(){if(win&&!win.isDestroyed())win.webContents.send('state',snapshot());}
 function requireIdle(){if(busy)throw Error('Aguarde a edição em andamento.');}
 async function folders(root,depth=0){
@@ -51,7 +53,30 @@ ipcMain.handle('editor',async(event,name,data)=>{
   if(event.sender!==win.webContents)throw Error('Origem inválida.');
   try{
     if(name==='state')return snapshot();
-    if(name==='add'){
+    if(name==='addImages'){
+      requireIdle();busy=true;update();
+      try{
+        const images=[];
+        for(const title of ['Imagem para a Cena 1','Imagem para as Cenas 2 e 3']){
+          const result=await dialog.showOpenDialog(win,{title,properties:['openFile'],filters:[{name:'Imagens',extensions:imageExtensions}]});
+          if(result.canceled)return {...snapshot(),busy:false};
+          images.push(result.filePaths[0]);
+        }
+        imagePlan([{images}]);
+        imageProducts.push({id:crypto.randomUUID(),images});
+        status='Duas imagens adicionadas. Exporte para enviar ao Flow na ordem numérica.';
+      }finally{busy=false;update();}
+    }else if(name==='removeImages'){
+      requireIdle();imageProducts=imageProducts.filter(p=>p.id!==data);status='Produto removido das imagens. Arquivos originais preservados.';
+    }else if(name==='exportImages'){
+      requireIdle();imagePlan(imageProducts);busy=true;update();
+      try{
+        const result=await dialog.showOpenDialog(win,{title:'Onde salvar as imagens para o Flow?',properties:['openDirectory','createDirectory']});
+        if(result.canceled)return {...snapshot(),busy:false};
+        const exported=await exportImages(imageProducts,result.filePaths[0]);
+        status=`${exported.count} imagens exportadas para ${exported.directory}. No Flow, siga a ordem numérica dos arquivos.`;
+      }finally{busy=false;update();}
+    }else if(name==='add'){
       requireIdle();
       const result=await dialog.showOpenDialog(win,{properties:['openDirectory','multiSelections']});
       if(result.canceled)return snapshot();
