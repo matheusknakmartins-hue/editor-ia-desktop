@@ -71,6 +71,7 @@ $('export').onclick=()=>call('export',selected);
 $('exportAll').onclick=()=>call('export');
 $('addImages').onclick=()=>call('addImages');
 $('matchImages').onclick=()=>call('matchImages');
+$('matchSceneImages').onclick=()=>call('matchSceneImages');
 $('confirmImagePairs').onclick=()=>call('confirmImagePairs');
 $('exportImages').onclick=()=>call('exportImages');
 window.editor.updates(render);call('state');

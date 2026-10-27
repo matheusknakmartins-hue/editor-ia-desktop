@@ -2,7 +2,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const {spawn}=require('node:child_process');
 
-function validatePairs(pairs,count){
+function validatePairs(pairs,count,sceneSplit){
   if(!Array.isArray(pairs)||pairs.length!==count/2)throw Error('O modelo não devolveu todos os pares.');
   const seen=new Set();
   for(const pair of pairs){
@@ -11,19 +11,21 @@ function validatePairs(pairs,count){
       if(!Number.isInteger(index)||index<0||index>=count||seen.has(index))throw Error('O modelo repetiu ou omitiu uma imagem.');
       seen.add(index);
     }
+    if(sceneSplit!==undefined&&(pair.indices[0]>=sceneSplit||pair.indices[1]<sceneSplit))throw Error('O modelo misturou as cenas de origem.');
   }
   return pairs;
 }
 
-async function analyzeImages(files,{python,cache,temporaryRoot,onProgress}){
+async function analyzeImages(files,{python,cache,temporaryRoot,onProgress,sceneSplit}){
   if(files.length<2||files.length>20||files.length%2)throw Error('Selecione uma quantidade par de imagens, de 2 a 20.');
+  if(sceneSplit!==undefined&&(!Number.isInteger(sceneSplit)||sceneSplit*2!==files.length))throw Error('Selecione a mesma quantidade de imagens para cada cena.');
   const folder=await fs.mkdtemp(path.join(temporaryRoot,'image-pairing-'));
   try{
     const input=path.join(folder,'input.json'),output=path.join(folder,'output.json');
-    await fs.writeFile(input,JSON.stringify(files));
+    await fs.writeFile(input,JSON.stringify(sceneSplit===undefined?files:{files,sceneSplit}));
     await new Promise((resolve,reject)=>{
       const child=spawn(python,[path.join(__dirname,'worker','pair_images.py'),'--input',input,'--output',output,'--cache',cache],
-        {windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,PYTHONIOENCODING:'utf-8'}});
+        {windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,PYTHONIOENCODING:'utf-8',OPENBLAS_NUM_THREADS:'1'}});
       let errors='',buffer='',timedOut=false;
       const timer=setTimeout(()=>{timedOut=true;child.kill();},15*60*1000);
       child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
@@ -41,7 +43,7 @@ async function analyzeImages(files,{python,cache,temporaryRoot,onProgress}){
         else resolve();
       });
     });
-    return validatePairs(JSON.parse(await fs.readFile(output,'utf8')),files.length);
+    return validatePairs(JSON.parse(await fs.readFile(output,'utf8')),files.length,sceneSplit);
   }finally{await fs.rm(folder,{recursive:true,force:true});}
 }
 module.exports={analyzeImages,validatePairs};

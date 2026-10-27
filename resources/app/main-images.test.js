@@ -27,8 +27,13 @@ test('batch import requires review, allows swaps, and exports every image once',
     protocol:{registerSchemesAsPrivileged(){},handle(){}},net:{},safeStorage:{decryptString(){}},
     app:{requestSingleInstanceLock:()=>true,on(){},whenReady:()=>Promise.resolve(),getPath:()=>folder}};
   let fail=false;
-  const localImages={analyzeImages:async selected=>{
+  const localImages={analyzeImages:async(selected,options)=>{
     if(fail)throw Error('model download unavailable');
+    if(options.sceneSplit!==undefined){
+      assert.equal(options.sceneSplit,1);
+      assert.deepEqual(Array.from(selected),[files[0],files[10]]);
+      return [{indices:[0,1],ambiguous:false}];
+    }
     assert.deepEqual(selected,files);
     return Array.from({length:10},(_,i)=>({indices:[i,i+10],ambiguous:i===0}));
   }};
@@ -58,4 +63,16 @@ test('batch import requires review, allows swaps, and exports every image once',
   const exported=await fs.readdir(path.join(folder,output));assert.equal(exported.length,20);
   const contents=await Promise.all(exported.map(async name=>(await fs.readFile(path.join(folder,output,name)))[0]));
   assert.deepEqual(contents.sort((a,b)=>a-b),Array.from({length:20},(_,i)=>i));
+  fail=false;
+  dialogs.push({canceled:false,filePaths:[files[0]]},{canceled:true,filePaths:[]});
+  state=await call('matchSceneImages');
+  assert.equal(state.imageProducts.length,10);assert.equal(state.busy,false);
+  dialogs.push({canceled:false,filePaths:[files[0]]},{canceled:false,filePaths:[files[10],files[11]]});
+  state=await call('matchSceneImages');assert.ok(state.error);assert.equal(state.imageProducts.length,10);
+  dialogs.push({canceled:false,filePaths:[files[0]]},{canceled:false,filePaths:[files[10]]});
+  state=await call('matchSceneImages');assert.equal(state.error,undefined);
+  assert.equal(state.imageProducts.length,11);
+  assert.equal(state.imageProducts[10].images[0],'input-0.png');
+  assert.equal(state.imageProducts[10].images[1],'input-10.png');
+  assert.equal(state.imageReviewRequired,true);
 });

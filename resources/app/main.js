@@ -79,18 +79,27 @@ ipcMain.handle('editor',async(event,name,data)=>{
   if(event.sender!==win.webContents)throw Error('Origem inválida.');
   try{
     if(name==='state')return snapshot();
-    if(name==='matchImages'){
+    if(name==='matchImages'||name==='matchSceneImages'){
       requireIdle();busy=true;update();
       try{
-        const result=await dialog.showOpenDialog(win,{title:'Selecione de 2 a 20 imagens para identificar os pares',properties:['openFile','multiSelections'],filters:[{name:'Imagens',extensions:imageExtensions}]});
+        const byScene=name==='matchSceneImages';
+        const result=await dialog.showOpenDialog(win,{title:byScene?'1/2: selecione as imagens da Cena 1 (até 10 produtos)':'Selecione de 2 a 20 imagens para identificar os pares',properties:['openFile','multiSelections'],filters:[{name:'Imagens',extensions:imageExtensions}]});
         if(result.canceled)return {...snapshot(),busy:false};
-        const files=result.filePaths;
+        let files=result.filePaths,sceneSplit;
+        if(byScene){
+          if(!files.length||files.length>10)throw Error('Selecione de 1 a 10 imagens da Cena 1.');
+          sceneSplit=files.length;
+          const second=await dialog.showOpenDialog(win,{title:`2/2: selecione ${sceneSplit} imagens da mulher apresentando o produto (Cenas 2/3)`,properties:['openFile','multiSelections'],filters:[{name:'Imagens',extensions:imageExtensions}]});
+          if(second.canceled)return {...snapshot(),busy:false};
+          if(second.filePaths.length!==sceneSplit)throw Error('Selecione a mesma quantidade de imagens para cada cena.');
+          files=[...files,...second.filePaths];
+        }
         if(files.length<2||files.length>20||files.length%2)throw Error('Selecione uma quantidade par de imagens, de 2 a 20.');
         for(const file of files)await imageThumbnail(file);
         const pairs=await analyzeImages(files,{
           python:process.platform==='win32'?path.join(__dirname,'python','python.exe'):(process.env.VIDEO_FACTORY_PYTHON||'python3'),
           cache:path.join(app.getPath('userData'),'models','dinov2-small'),temporaryRoot:app.getPath('temp'),
-          onProgress:message=>{status=message;update();}
+          sceneSplit,onProgress:message=>{status=message;update();}
         });
         for(const pair of pairs)imageProducts.push({id:crypto.randomUUID(),images:pair.indices.map(index=>files[index]),needsReview:true,ambiguous:pair.ambiguous});
         status='Pares sugeridos pela análise local. Confira os produtos e a ordem das cenas; depois clique em Confirmar pares e cenas.';

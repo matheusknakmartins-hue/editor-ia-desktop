@@ -11,6 +11,45 @@ import pair_images
 
 
 class PairImagesTests(unittest.TestCase):
+    def test_scene_groups_cannot_be_paired_within_the_same_scene(self):
+        scores = [[1, .99, .80, .60], [.99, 1, .60, .80],
+                  [.80, .60, 1, .99], [.60, .80, .99, 1]]
+        pairs = pair_images.optimal_pairs(scores, scene_split=2)
+        self.assertEqual([p['indices'] for p in pairs], [[0, 2], [1, 3]])
+        self.assertFalse(any(p['ambiguous'] for p in pairs))
+
+    def test_equal_category_vectors_can_be_separated_by_details_and_color(self):
+        import numpy as np
+        def features(kind):
+            return {'global': np.array([1., 0, 0, 0, 0]),
+                    'patches': np.eye(5)[[1, 2] if kind == 'pink' else [3, 4]],
+                    'colors': np.array([1., 0]) if kind == 'pink' else np.array([0., 1])}
+        images = [features(kind) for kind in ('pink', 'cream', 'pink', 'cream')]
+        scores = pair_images.similarity_matrix(images)
+        self.assertGreater(scores[0][2], scores[0][1])
+        self.assertEqual([p['indices'] for p in pair_images.optimal_pairs(scores)], [[0, 2], [1, 3]])
+
+    def test_low_similarity_is_marked_uncertain_even_with_no_alternatives(self):
+        self.assertTrue(pair_images.optimal_pairs([[1, .2], [.2, 1]])[0]['ambiguous'])
+
+    def test_full_and_product_views_preserve_aspect_ratio_instead_of_center_crop(self):
+        from types import SimpleNamespace
+        for view in ('full', 'product'):
+            with self.subTest(view=view), patch('subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=bytes(224*224*3))) as run:
+                pair_images.decode_image('image.png', {}, 'ffmpeg', view)
+                filters = run.call_args.args[0][run.call_args.args[0].index('-vf')+1]
+                self.assertIn('force_original_aspect_ratio=decrease', filters)
+                self.assertIn('pad=224:224', filters)
+
+    def test_patch_descriptors_retain_local_features_and_color(self):
+        import numpy as np
+        hidden = np.ones((1, 5, 8), dtype=np.float32)
+        pixels = np.zeros((1, 3, 224, 224), dtype=np.float32)
+        features = pair_images.detail_features(hidden, pixels, {}, 'center')
+        self.assertEqual(features['patches'].shape, (4, 8))
+        self.assertAlmostEqual(float(features['colors'].sum()), 1)
+        self.assertAlmostEqual(float(np.linalg.norm(features['global'])), 1, places=5)
+
     def test_global_assignment_does_not_make_greedy_mistake(self):
         scores = [[1, .95, .9, .1], [.95, 1, .1, .9], [.9, .1, 1, .1], [.1, .9, .1, 1]]
         self.assertEqual([p['indices'] for p in pair_images.optimal_pairs(scores)], [[0, 2], [1, 3]])

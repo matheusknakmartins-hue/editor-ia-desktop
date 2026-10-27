@@ -8,9 +8,16 @@ EDITOR DO NEIS — Windows x64 — versão portátil 1.0
 5. Ajuste as velocidades, gere a prévia e exporte.
 
 Imagens para o Flow:
-- Clique em "Identificar produtos nas imagens" e selecione uma quantidade
-  par de imagens, de 2 a 20 (até 10 produtos). Os nomes podem ser aleatórios.
-- O modelo visual DINOv2 Small sugere pares por semelhança visual.
+- Prefira "Relacionar Cena 1 com Cenas 2/3": selecione primeiro as imagens
+  da Cena 1 (até 10), depois a mesma quantidade de imagens da mulher
+  apresentando o produto. Não precisa ordenar por produto: o editor procura
+  os pares entre os dois grupos e mantém cada imagem na sua etapa.
+- "Sugerir pares de lote misturado" aceita de 2 a 20 imagens em uma única
+  seleção, mas também precisa inferir as duplas sem saber a etapa de origem.
+- O modelo visual DINOv2 Small compara a imagem inteira, o recorte central
+  e a região inferior onde os produtos aparecem neste fluxo. Compara também
+  detalhes locais e cores, além do resumo geral da imagem. Essa análise é
+  mais lenta que a anterior e reaproveita o mesmo modelo já baixado.
   Confira as miniaturas: produtos parecidos podem ser confundidos.
 - Defina qual imagem é a Cena 1 e qual gera as Cenas 2/3. O modelo não
   identifica automaticamente qual imagem veio do ChatGPT ou do Flow.
