@@ -1,5 +1,5 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; media-src preview:; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; media-src preview:; connect-src 'none'">
 <title>EDITOR DO NEIS</title><link rel="stylesheet" href="style.css"></head>
 <body><header><div><small>NEIS / CREATOR TOOLS</small><h1>EDITOR DO NEIS<span>●</span></h1><p>Do bruto ao pronto. Três cenas, um vídeo.</p></div><button id="settings">Configurações</button></header>
 <main><section><div class="bar"><h2>Seus produtos</h2><button id="add" class="primary">+ Adicionar pastas</button></div><p class="muted">Três vídeos por pasta, em ordem natural de nome.</p><div id="groups"></div>
@@ -7,8 +7,10 @@
 <section><div class="bar"><h2 id="title">Prévia</h2><span id="count"></span></div><video id="video" controls></video><p id="empty">Escolha um produto para editar.</p>
 <div id="details" hidden><p id="clips" class="muted"></p><div class="speeds"><label>Cena 1<input id="s0" type="number" min=".5" max="2" step=".05" value="1.3"></label><label>Cena 2<input id="s1" type="number" min=".5" max="2" step=".05" value="1.15"></label><label>Cena 3<input id="s2" type="number" min=".5" max="2" step=".05" value="1.15"></label></div><div class="bar"><button id="generate" class="primary">Gerar prévia</button><button id="export">Exportar vídeo</button><button id="remove">Remover da fila</button></div></div></section></main>
 <section id="flowImages"><div class="bar"><h2>Imagens para o Flow</h2><span id="imageCount">0 produtos</span></div>
-<p>Adicione duas imagens por produto: primeiro a Cena 1, depois a imagem das Cenas 2/3. A exportação reúne todas as Cenas 1 antes das Cenas 2/3, na ordem dos produtos.</p>
-<div class="bar bottom"><button id="addImages" class="primary">+ Adicionar produto com duas imagens</button><button id="exportImages">Exportar imagens em ordem</button></div>
+<p>Selecione até 20 imagens para sugerir os pares por produto com IA local, sem API paga. Confira as duplas e defina qual imagem é a Cena 1 e qual gera as Cenas 2/3. A exportação reúne todas as Cenas 1 antes das Cenas 2/3.</p>
+<p class="muted">O primeiro uso baixa um modelo gratuito. Depois a análise funciona sem internet. Suas imagens ficam no computador.</p>
+<div class="bar bottom"><button id="matchImages" class="primary">Identificar produtos nas imagens</button><button id="addImages">+ Adicionar par manualmente</button><button id="exportImages">Exportar imagens em ordem</button></div>
+<div id="imageReview" hidden><p>Confira as imagens de cada produto e a ordem das cenas. Produtos parecidos podem ser confundidos. Use as listas para trocar imagens entre duplas ou o botão para inverter as cenas.</p><button id="confirmImagePairs" class="primary">Confirmar pares e cenas</button></div>
 <div id="imageProducts"></div><p class="muted">Os originais são preservados. Cada exportação cria uma nova pasta. Esta lista fica disponível até fechar o editor.</p></section>
 <footer id="status" role="status"></footer>
 <dialog id="config"><h2>Configurações</h2><label class="check"><input id="assembly" type="checkbox" checked> Cortar pelo AssemblyAI (serviço pago)</label><p class="muted">Desmarque para detecção de fala local, sem API.</p><label>Chave AssemblyAI<input id="key" type="password" placeholder="Sua chave fica oculta" autocomplete="off"></label><p id="keyState"></p><div class="bar"><button id="saveKey" class="primary">Salvar chave</button><button id="forgetKey">Remover chave</button><button id="closeConfig">Fechar</button></div></dialog>

@@ -27,16 +27,36 @@ function render(next){
   for(const product of products){
     const row=document.createElement('div');row.className='image-product';
     const title=document.createElement('strong');title.textContent=product.name;row.append(title);
+    if(product.needsReview){const note=document.createElement('p');note.className='review-note';note.textContent=product.ambiguous?'Pares visualmente parecidos — confira com atenção.':'Confira o par e a posição das cenas.';row.append(note);}
+    const slots=document.createElement('div');slots.className='image-slots';
     product.images.forEach((file,index)=>{
+      const slot=document.createElement('div');slot.className='image-slot';
+      const label=document.createElement('strong');label.textContent=index?'Cenas 2/3':'Cena 1';slot.append(label);
+      if(product.thumbnails?.[index]){
+        const image=document.createElement('img');image.src=product.thumbnails[index];image.alt=`${product.name}, ${label.textContent}`;slot.append(image);
+      }
       const description=document.createElement('p');
-      description.textContent=`${index?'Cenas 2/3':'Cena 1'}: ${file} → ${product.filenames[index]}`;
-      row.append(description);
+      description.textContent=`${file} → ${product.filenames[index]}`;slot.append(description);
+      const select=document.createElement('select');select.disabled=state.busy;
+      select.setAttribute('aria-label',`Trocar imagem de ${product.name}, ${label.textContent}`);
+      for(const other of products)other.images.forEach((otherFile,otherScene)=>{
+        const option=document.createElement('option');option.value=JSON.stringify({otherProductId:other.id,otherScene});
+        option.textContent=other.id===product.id&&otherScene===index?'Manter esta imagem':`${other.name} / ${otherScene?'Cenas 2/3':'Cena 1'}: ${otherFile}`;
+        option.selected=other.id===product.id&&otherScene===index;select.append(option);
+      });
+      select.onchange=()=>call('swapImageSlots',{productId:product.id,scene:index,...JSON.parse(select.value)});
+      slot.append(select);slots.append(slot);
     });
+    row.append(slots);
+    const swap=document.createElement('button');swap.textContent='Inverter Cena 1 ↔ Cenas 2/3';swap.disabled=state.busy;
+    swap.onclick=()=>call('swapImageSlots',{productId:product.id,scene:0,otherProductId:product.id,otherScene:1});row.append(swap);
     const remove=document.createElement('button');remove.textContent='Remover produto';remove.disabled=state.busy;
     remove.onclick=()=>{if(confirm(`Remover ${product.name} das imagens? Os originais serão preservados.`))call('removeImages',product.id);};
     row.append(remove);$('imageProducts').append(row);
   }
-  $('exportImages').disabled=state.busy||!products.length;
+  $('imageReview').hidden=!state.imageReviewRequired;
+  $('confirmImagePairs').disabled=state.busy||!state.imageReviewRequired;
+  $('exportImages').disabled=state.busy||!products.length||state.imageReviewRequired;
 }
 $('add').onclick=()=>call('add');
 $('settings').onclick=()=>$('config').showModal();
@@ -50,5 +70,7 @@ $('generateAll').onclick=()=>call('generate',{assembly:$('assembly').checked});
 $('export').onclick=()=>call('export',selected);
 $('exportAll').onclick=()=>call('export');
 $('addImages').onclick=()=>call('addImages');
+$('matchImages').onclick=()=>call('matchImages');
+$('confirmImagePairs').onclick=()=>call('confirmImagePairs');
 $('exportImages').onclick=()=>call('exportImages');
 window.editor.updates(render);call('state');

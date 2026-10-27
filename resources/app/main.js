@@ -1,16 +1,42 @@
-const {app,BrowserWindow,ipcMain,dialog,safeStorage,protocol,net}=require('electron');
+const {app,BrowserWindow,ipcMain,dialog,safeStorage,protocol,net,nativeImage}=require('electron');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
-const {spawn}=require('node:child_process');
+const {spawn,execFile}=require('node:child_process');
 const crypto=require('node:crypto');
 const {imageExtensions,imagePlan,exportImages}=require('./flow-images');
+const {analyzeImages}=require('./local-images');
 protocol.registerSchemesAsPrivileged([{scheme:'preview',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true}}]);
 let win,groups=[],busy=false,key='',status='Adicione as pastas com três cenas.',session;
 let imageProducts=[];
+const imageThumbnails=new Map();
+async function imageThumbnail(file){
+  if(!imageThumbnails.has(file)){
+    let image=nativeImage.createFromPath(file);
+    if(image.isEmpty()){
+      const ffmpeg=process.env.VIDEO_FACTORY_FFMPEG||(process.platform==='win32'?path.join(__dirname,'bin','ffmpeg.exe'):'ffmpeg');
+      const png=await new Promise((resolve,reject)=>execFile(ffmpeg,
+        ['-v','error','-nostdin','-i',file,'-vf','scale=240:180:force_original_aspect_ratio=decrease','-frames:v','1','-f','image2pipe','-c:v','png','-'],
+        {encoding:'buffer',windowsHide:true,timeout:60000,maxBuffer:4*1024*1024},(error,stdout)=>error?reject(Error(`Não foi possível abrir a imagem ${path.basename(file)}.`)):resolve(stdout)));
+      image=nativeImage.createFromBuffer(png);
+    }
+    if(image.isEmpty())throw Error(`Não foi possível abrir a imagem ${path.basename(file)}.`);
+    const {width,height}=image.getSize(),scale=Math.min(240/width,180/height,1);
+    imageThumbnails.set(file,image.resize({width:Math.max(1,Math.round(width*scale)),height:Math.max(1,Math.round(height*scale))}).toDataURL());
+  }
+  return imageThumbnails.get(file);
+}
 const extensions=new Set(['.mp4','.mov','.m4v','.webm']);
 const keyFile=()=>path.join(app.getPath('userData'),'assembly.key');
-const snapshot=()=>({groups:groups.map(g=>({...g,clips:g.clips.map(p=>path.basename(p)),url:g.output?`preview://video/${g.id}`:null})),imageProducts:imageProducts.map((p,index)=>({id:p.id,name:`Produto ${String(index+1).padStart(2,'0')}`,images:p.images.map(file=>path.basename(file)),filenames:imagePlan(imageProducts).filter(item=>item.productIndex===index).map(item=>item.name)})),busy,status,hasKey:!!key});
+function snapshot(){
+  const plan=imageProducts.length?imagePlan(imageProducts):[];
+  return {groups:groups.map(g=>({...g,clips:g.clips.map(p=>path.basename(p)),url:g.output?`preview://video/${g.id}`:null})),
+    imageProducts:imageProducts.map((p,index)=>({id:p.id,name:`Produto ${String(index+1).padStart(2,'0')}`,
+      images:p.images.map(file=>path.basename(file)),thumbnails:p.images.map(file=>imageThumbnails.get(file)||''),
+      needsReview:!!p.needsReview,ambiguous:!!p.ambiguous,
+      filenames:plan.filter(item=>item.productIndex===index).map(item=>item.name)})),
+    imageReviewRequired:imageProducts.some(p=>p.needsReview),busy,status,hasKey:!!key};
+}
 function update(){if(win&&!win.isDestroyed())win.webContents.send('state',snapshot());}
 function requireIdle(){if(busy)throw Error('Aguarde a edição em andamento.');}
 async function folders(root,depth=0){
@@ -53,7 +79,33 @@ ipcMain.handle('editor',async(event,name,data)=>{
   if(event.sender!==win.webContents)throw Error('Origem inválida.');
   try{
     if(name==='state')return snapshot();
-    if(name==='addImages'){
+    if(name==='matchImages'){
+      requireIdle();busy=true;update();
+      try{
+        const result=await dialog.showOpenDialog(win,{title:'Selecione de 2 a 20 imagens para identificar os pares',properties:['openFile','multiSelections'],filters:[{name:'Imagens',extensions:imageExtensions}]});
+        if(result.canceled)return {...snapshot(),busy:false};
+        const files=result.filePaths;
+        if(files.length<2||files.length>20||files.length%2)throw Error('Selecione uma quantidade par de imagens, de 2 a 20.');
+        for(const file of files)await imageThumbnail(file);
+        const pairs=await analyzeImages(files,{
+          python:process.platform==='win32'?path.join(__dirname,'python','python.exe'):(process.env.VIDEO_FACTORY_PYTHON||'python3'),
+          cache:path.join(app.getPath('userData'),'models','dinov2-small'),temporaryRoot:app.getPath('temp'),
+          onProgress:message=>{status=message;update();}
+        });
+        for(const pair of pairs)imageProducts.push({id:crypto.randomUUID(),images:pair.indices.map(index=>files[index]),needsReview:true,ambiguous:pair.ambiguous});
+        status='Pares sugeridos pela análise local. Confira os produtos e a ordem das cenas; depois clique em Confirmar pares e cenas.';
+      }finally{busy=false;update();}
+    }else if(name==='swapImageSlots'){
+      requireIdle();
+      const product=imageProducts.find(p=>p.id===data?.productId),other=imageProducts.find(p=>p.id===data?.otherProductId);
+      if(!product||!other||![0,1].includes(data.scene)||![0,1].includes(data.otherScene))throw Error('Selecione duas imagens válidas para trocar.');
+      [product.images[data.scene],other.images[data.otherScene]]=[other.images[data.otherScene],product.images[data.scene]];
+      product.needsReview=other.needsReview=true;
+      status='Imagens trocadas. Confira os pares e confirme antes de exportar.';
+    }else if(name==='confirmImagePairs'){
+      requireIdle();for(const product of imageProducts)product.needsReview=false;
+      status='Pares e cenas confirmados. Pronto para exportar as imagens em ordem.';
+    }else if(name==='addImages'){
       requireIdle();busy=true;update();
       try{
         const images=[];
@@ -62,7 +114,7 @@ ipcMain.handle('editor',async(event,name,data)=>{
           if(result.canceled)return {...snapshot(),busy:false};
           images.push(result.filePaths[0]);
         }
-        imagePlan([{images}]);
+        imagePlan([{images}]);for(const file of images)await imageThumbnail(file);
         imageProducts.push({id:crypto.randomUUID(),images});
         status='Duas imagens adicionadas. Exporte para enviar ao Flow na ordem numérica.';
       }finally{busy=false;update();}
@@ -71,6 +123,7 @@ ipcMain.handle('editor',async(event,name,data)=>{
     }else if(name==='exportImages'){
       requireIdle();imagePlan(imageProducts);busy=true;update();
       try{
+        if(imageProducts.some(p=>p.needsReview))throw Error('Confira as duplas e clique em Confirmar pares e cenas antes de exportar.');
         const result=await dialog.showOpenDialog(win,{title:'Onde salvar as imagens para o Flow?',properties:['openDirectory','createDirectory']});
         if(result.canceled)return {...snapshot(),busy:false};
         const exported=await exportImages(imageProducts,result.filePaths[0]);

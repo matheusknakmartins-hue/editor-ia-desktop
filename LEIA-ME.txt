@@ -8,8 +8,16 @@ EDITOR DO NEIS — Windows x64 — versão portátil 1.0
 5. Ajuste as velocidades, gere a prévia e exporte.
 
 Imagens para o Flow:
-- Na área "Imagens para o Flow", adicione um produto por vez.
-- Selecione primeiro a imagem da Cena 1 e depois a das Cenas 2/3.
+- Clique em "Identificar produtos nas imagens" e selecione uma quantidade
+  par de imagens, de 2 a 20 (até 10 produtos). Os nomes podem ser aleatórios.
+- O modelo visual DINOv2 Small sugere pares por semelhança visual.
+  Confira as miniaturas: produtos parecidos podem ser confundidos.
+- Defina qual imagem é a Cena 1 e qual gera as Cenas 2/3. O modelo não
+  identifica automaticamente qual imagem veio do ChatGPT ou do Flow.
+- Use as listas para trocar imagens entre produtos e o botão de inverter
+  para trocar a posição das duas cenas. Clique em "Confirmar pares e cenas".
+- A opção manual continua disponível: adicione um produto por vez,
+  selecionando primeiro a Cena 1 e depois a imagem das Cenas 2/3.
 - A numeração dos produtos segue a ordem em que são adicionados.
 - Exporte para uma pasta: será criada uma subpasta Imagens-Flow-...
 - Os nomes começam pela sequência: todas as Cenas 1 dos produtos,
@@ -20,6 +28,16 @@ Imagens para o Flow:
 - São aceitos PNG, JPG/JPEG e WebP. Os originais não são alterados.
 - Selecione os arquivos no Flow pela ordem do nome. Não há envio automático.
 - A lista de imagens fica disponível até fechar o editor.
+
+Modelo visual local:
+- A análise de imagens não usa API paga nem a chave AssemblyAI.
+- No primeiro uso é necessário internet para baixar o modelo gratuito de
+  https://huggingface.co/Xenova/dinov2-small (DINOv2, licença Apache 2.0).
+- São baixados apenas arquivos públicos do modelo. As imagens não são
+  enviadas. O download é conferido por SHA-256 antes de usar o modelo.
+- O modelo fica em %APPDATA%/editor-do-neis/models/dinov2-small. Nos usos
+  seguintes a análise funciona offline, usando o processador do computador.
+- Aproveita o Python, NumPy, ONNX Runtime e FFmpeg incluídos no pacote.
 
 Configurações:
 - AssemblyAI: informe sua própria chave e clique Salvar chave.
