@@ -11,6 +11,25 @@ import pair_images
 
 
 class PairImagesTests(unittest.TestCase):
+    def test_uncertain_scene_label_cannot_mix_chair_and_supplement_pairs(self):
+        # 0=warehouse chair, 1=warehouse supplement, 2=retail chair, 3=retail supplement.
+        scores = [[1, .2, .95, .2], [.2, 1, .2, .95],
+                  [.95, .2, 1, .2], [.2, .95, .2, 1]]
+        # The warehouse supplement presenter scores more like scene 2 than the retail chair.
+        roles = [-.2, .05, .04, .3]
+        pairs = pair_images.pair_with_scene_scores(scores, roles)
+        self.assertEqual([pair['indices'] for pair in pairs], [[0, 2], [1, 3]])
+        self.assertTrue(pairs[1]['sceneAmbiguous'])
+
+    def test_changing_scene_predictions_only_reorders_images_within_products(self):
+        scores = [[1, .2, .95, .2], [.2, 1, .2, .95],
+                  [.95, .2, 1, .2], [.2, .95, .2, 1]]
+        for roles in ([0, 0, 0, 0], [.2, -.2, -.1, .1], [.3, .2, .1, -.1]):
+            with self.subTest(roles=roles):
+                pairs = pair_images.pair_with_scene_scores(scores, roles)
+                self.assertEqual({frozenset(pair['indices']) for pair in pairs},
+                                 {frozenset((0, 2)), frozenset((1, 3))})
+
     def test_mixed_batch_gets_scene_one_first_without_using_filename_order(self):
         scores = [[1, .1, .95, .1], [.1, 1, .1, .95], [.95, .1, 1, .1], [.1, .95, .1, 1]]
         roles = [.15, -.15, -.20, .20]

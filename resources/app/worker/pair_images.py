@@ -238,23 +238,19 @@ def similarity_matrix(features):
 
 
 def pair_with_scene_scores(similarities, scene_scores):
-    """Use locally inferred scene roles to prevent pairing two scenes of the same type."""
+    """Find product identity first; use scene scores only to order each matched pair."""
     count = len(similarities)
     if count<2 or count>MAX_IMAGES or count%2 or len(scene_scores) != count or any(not math.isfinite(score) for score in scene_scores):
         raise ValueError('Não foi possível identificar as cenas das imagens.')
-    # Every product contributes one image of each scene. Positive scores favor scene 2/3.
-    ranked = sorted(range(count), key=lambda index: (scene_scores[index], index))
-    split = count // 2
-    first = sorted(ranked[:split])
-    second = sorted(ranked[split:])
-    order = first + second
-    boundary_gap = scene_scores[ranked[split]] - scene_scores[ranked[split-1]]
-    pairs = optimal_pairs([[similarities[i][j] for j in order] for i in order], split)
+    # Both stages can show a single woman. A mistaken scene label must never
+    # forbid two views of the same product from being matched together.
+    pairs = optimal_pairs(similarities)
     for pair in pairs:
-        pair['indices'] = [order[index] for index in pair['indices']]
+        pair['indices'].sort(key=lambda index: (scene_scores[index], index))
         a, b = pair['indices']
-        pair['sceneAmbiguous'] = (boundary_gap < .015 or scene_scores[a] > -.015 or scene_scores[b] < .015)
-    return pairs
+        pair['sceneAmbiguous'] = (scene_scores[b]-scene_scores[a] < .015 or
+                                  scene_scores[a] > -.015 or scene_scores[b] < .015)
+    return sorted(pairs, key=lambda pair: pair['indices'][0])
 
 
 def pair_images(files, cache, ffmpeg, scene_split=None):

@@ -11,9 +11,10 @@ Imagens para o Flow:
 - Clique em "Selecionar imagens e organizar" e selecione todas as imagens
   de uma vez: uma quantidade par de 2 a 20 (até 10 produtos), sem precisar
   ordenar ou separar por cena. Cada produto deve ter exatamente duas imagens.
-- O classificador local CLIP sugere quais imagens mostram a mulher sozinha
-  apresentando um produto (Cenas 2/3) e quais são a Cena 1. A partir disso,
-  o editor busca o mesmo produto entre as etapas, sem usar a ordem dos nomes.
+- O editor primeiro busca as duas imagens do mesmo produto. Depois, dentro
+  de cada par, o classificador local CLIP sugere qual imagem é a mulher
+  apresentando o produto (Cenas 2/3). Uma dúvida sobre a etapa não altera
+  os produtos pareados. Os nomes dos arquivos não são usados na identificação.
 - O modelo visual DINOv2 Small compara a imagem inteira, o recorte central
   e a região inferior onde os produtos aparecem neste fluxo. Compara também
   detalhes locais e cores, além do resumo geral da imagem. Essa análise é
